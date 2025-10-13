@@ -1,4 +1,4 @@
-import 'package:do3things/Screens/HomeScreen.dart';
+import 'package:do3things/Screens/MainScreen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Do 3 Things',
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+      home: MainScreen(),
     );
   }
 }

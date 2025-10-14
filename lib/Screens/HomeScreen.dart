@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+/// Task Model
+class Task {
+  final String id;
+  String title;
+  bool isCompleted;
+
+  Task({
+    required this.id,
+    required this.title,
+    this.isCompleted = false,
+  });
+}
+
 /// Main Home Screen Widget
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,8 +37,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
 
-  int completedTasks = 0;
-  int totalTasks = 3;
+  List<Task> tasks = [
+    Task(id: '1', title: 'Complete project documentation'),
+    Task(id: '2', title: 'Review pull requests'),
+    Task(id: '3', title: 'Update design mockups'),
+  ];
+
+  int get completedTasks => tasks.where((task) => task.isCompleted).length;
+  int get totalTasks => tasks.length;
 
   // ============== LIFECYCLE ==============
   @override
@@ -72,21 +91,91 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ============== TASK METHODS ==============
-  void _completeTask() {
-    if (completedTasks < totalTasks) {
-      setState(() {
-        completedTasks++;
-      });
-      final newProgress = completedTasks / totalTasks;
-      _animateToProgress(newProgress);
-    }
+  void _toggleTask(String taskId) {
+    setState(() {
+      final task = tasks.firstWhere((t) => t.id == taskId);
+      task.isCompleted = !task.isCompleted;
+    });
+    final newProgress = completedTasks / totalTasks;
+    _animateToProgress(newProgress);
   }
 
-  void _resetProgress() {
+  void _deleteTask(String taskId) {
     setState(() {
-      completedTasks = 0;
+      tasks.removeWhere((task) => task.id == taskId);
     });
-    _animateToProgress(0.0);
+    final newProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
+    _animateToProgress(newProgress);
+  }
+
+  void _editTask(String taskId) {
+    final task = tasks.firstWhere((t) => t.id == taskId);
+    final controller = TextEditingController(text: task.title);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Task'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Task Title',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                setState(() {
+                  task.title = controller.text.trim();
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTaskOptions(Task task) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit, color: Colors.blue[600]),
+              title: const Text('Edit Task'),
+              onTap: () {
+                Navigator.pop(context);
+                _editTask(task.id);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Delete Task'),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteTask(task.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ============== UI BUILD ==============
@@ -104,6 +193,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _buildHeader(),
                 SizedBox(height: spacingLarge),
                 _buildProgressSection(),
+                const SizedBox(height: 32),
+                _buildTasksList(),
               ],
             ),
           ),
@@ -206,8 +297,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             _buildProgressLabel(),
             const SizedBox(height: 8),
             _buildProgressMessage(),
-            const SizedBox(height: 24),
-            _buildActionButtons(),
           ],
         );
       },
@@ -312,30 +401,97 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+  // ============== TASKS LIST SECTION ==============
+  Widget _buildTasksList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ElevatedButton.icon(
-          onPressed: _completeTask,
-          icon: const Icon(Icons.add_task),
-          label: const Text('Complete Task'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue[600],
-            foregroundColor: Colors.white,
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 16),
+          child: Text(
+            'Today\'s Tasks',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: Colors.grey[800],
+            ),
           ),
         ),
-        const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed: _resetProgress,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Reset'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[400],
-            foregroundColor: Colors.white,
-          ),
-        ),
+        ...tasks.map((task) => _buildTaskItem(task)).toList(),
       ],
+    );
+  }
+
+  Widget _buildTaskItem(Task task) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => _toggleTask(task.id),
+              child: _buildCheckbox(task.isCompleted),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _toggleTask(task.id),
+                child: Text(
+                  task.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: task.isCompleted ? Colors.grey[400] : Colors.grey[800],
+                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+              onPressed: () => _showTaskOptions(task),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckbox(bool isCompleted) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isCompleted ? Colors.blue[600] : Colors.transparent,
+        border: Border.all(
+          color: isCompleted ? Colors.blue[600]! : Colors.grey[300]!,
+          width: 2,
+        ),
+      ),
+      child: isCompleted
+          ? Icon(
+        Icons.check,
+        size: 18,
+        color: Colors.white,
+      )
+          : null,
     );
   }
 }

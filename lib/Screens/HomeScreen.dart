@@ -164,6 +164,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _addNewTask() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Task'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Task Title',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                setState(() {
+                  tasks.add(Task(
+                    id: DateTime.now().toString(),
+                    title: controller.text.trim(),
+                  ));
+                });
+                _updateProgressAnimation();
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ============== UI BUILD ==============
   @override
   Widget build(BuildContext context) {
@@ -179,12 +219,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _buildHeader(),
                 SizedBox(height: spacingLarge),
                 _buildProgressSection(),
-                const SizedBox(height: 32),
-                _buildTasksList(),
+                tasks.isEmpty ? _buildEmptyState() : _buildTasksList(),
               ],
             ),
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addNewTask,
+        backgroundColor: Colors.blue[600],
+        elevation: 4,
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }
@@ -373,7 +418,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildProgressMessage() {
-    final message = completedTasks == totalTasks
+    final message = tasks.isEmpty
+        ? '✨ Ready to be productive?'
+        : completedTasks == totalTasks
         ? '🎉 All tasks completed!'
         : 'Keep going! Complete ${totalTasks - completedTasks} more task${totalTasks - completedTasks > 1 ? 's' : ''}';
 
@@ -383,6 +430,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         fontSize: 13,
         color: Colors.grey[500],
         fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  // ============== EMPTY STATE ==============
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 40),
+          Text(
+            '✨',
+            style: TextStyle(fontSize: 48),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Start your day by adding tasks',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              color: const Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No tasks for today',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: const Color(0xFF9CA3AF),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }

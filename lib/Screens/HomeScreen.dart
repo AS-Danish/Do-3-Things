@@ -225,12 +225,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewTask,
-        backgroundColor: Colors.blue[600],
-        elevation: 4,
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
+
     );
   }
 
@@ -309,9 +304,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Center(
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: tasks.isEmpty ? 20 : 40),
           _buildProgressCircle(),
-          const SizedBox(height: 32),
+          SizedBox(height: tasks.isEmpty ? 16 : 32),
         ],
       ),
     );
@@ -324,10 +319,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return Column(
           children: [
             _buildCircleWithGlow(),
-            const SizedBox(height: 28),
-            _buildProgressLabel(),
-            const SizedBox(height: 8),
-            _buildProgressMessage(),
+            if (tasks.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              _buildProgressLabel(),
+              const SizedBox(height: 8),
+              _buildProgressMessage(),
+            ],
           ],
         );
       },
@@ -407,6 +404,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildProgressLabel() {
+    if (tasks.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Text(
       'Today\'s Progress',
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -418,9 +418,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildProgressMessage() {
-    final message = tasks.isEmpty
-        ? '✨ Ready to be productive?'
-        : completedTasks == totalTasks
+    if (tasks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final message = completedTasks == totalTasks
         ? '🎉 All tasks completed!'
         : 'Keep going! Complete ${totalTasks - completedTasks} more task${totalTasks - completedTasks > 1 ? 's' : ''}';
 
@@ -440,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
           Text(
             '✨',
             style: TextStyle(fontSize: 48),
@@ -456,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 6),
           Text(
-            'No tasks for today',
+            'Make today count',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -464,9 +466,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 32),
+          _buildQuickTips(),
+          const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickTips() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Quick Tips',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildTipItem('📝', 'Break down big goals into smaller tasks'),
+          const SizedBox(height: 12),
+          _buildTipItem('⏰', 'Set realistic deadlines for yourself'),
+          const SizedBox(height: 12),
+          _buildTipItem('🎯', 'Focus on your most important task first'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipItem(String emoji, String text) {
+    return Row(
+      children: [
+        Text(
+          emoji,
+          style: const TextStyle(fontSize: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

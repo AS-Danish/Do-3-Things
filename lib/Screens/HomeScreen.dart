@@ -8,11 +8,15 @@ import '../widgets/TaskOptionsPopUp.dart';
 class Task {
   final String id;
   String title;
+  String description;
+  DateTime? dueDate;
   bool isCompleted;
 
   Task({
     required this.id,
     required this.title,
+    this.description = '',
+    this.dueDate,
     this.isCompleted = false,
   });
 }
@@ -40,11 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _progressAnimation;
   DateTime selectedDate = DateTime.now();
 
-  List<Task> tasks = [
-    Task(id: '1', title: 'Complete project documentation'),
-    Task(id: '2', title: 'Review pull requests'),
-    Task(id: '3', title: 'Update design mockups'),
-  ];
+  List<Task> tasks = [];
 
   int get completedTasks => tasks.where((task) => task.isCompleted).length;
   int get totalTasks => tasks.length;
@@ -53,7 +53,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _initializeSampleTasks();
     _initializeAnimation();
+  }
+
+  void _initializeSampleTasks() {
+    tasks = [
+      Task(
+        id: '1',
+        title: 'Complete project documentation',
+        description: 'Write comprehensive documentation for the new feature',
+        dueDate: DateTime.now().add(const Duration(days: 2)),
+      ),
+      Task(
+        id: '2',
+        title: 'Review pull requests',
+        description: 'Review and approve pending PRs from team members',
+        dueDate: DateTime.now().add(const Duration(days: 1)),
+      ),
+      Task(
+        id: '3',
+        title: 'Update design mockups',
+        description: 'Finalize UI designs based on client feedback',
+        dueDate: DateTime.now().add(const Duration(days: 3)),
+      ),
+    ];
   }
 
   void _initializeAnimation() {
@@ -140,37 +164,110 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _editTask(String taskId) {
     final task = tasks.firstWhere((t) => t.id == taskId);
-    final controller = TextEditingController(text: task.title);
+    final titleController = TextEditingController(text: task.title);
+    final descriptionController = TextEditingController(text: task.description);
+    DateTime? selectedDueDate = task.dueDate;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Task'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Task Title',
-            border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Task'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Task Title',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDueDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2030),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: Colors.blue[600]!,
+                              onPrimary: Colors.white,
+                              onSurface: Colors.grey[800]!,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setDialogState(() {
+                        selectedDueDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 20, color: Colors.grey[600]),
+                        const SizedBox(width: 12),
+                        Text(
+                          selectedDueDate != null
+                              ? _formatDate(selectedDueDate!)
+                              : 'Select Due Date',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: selectedDueDate != null ? Colors.grey[800] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isNotEmpty) {
+                  setState(() {
+                    task.title = titleController.text.trim();
+                    task.description = descriptionController.text.trim();
+                    task.dueDate = selectedDueDate;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                setState(() {
-                  task.title = controller.text.trim();
-                });
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }
@@ -193,43 +290,121 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _addNewTask() {
-    final controller = TextEditingController();
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    DateTime? selectedDueDate;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Task'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Task Title',
-            border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add New Task'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Task Title',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2030),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: Colors.blue[600]!,
+                              onPrimary: Colors.white,
+                              onSurface: Colors.grey[800]!,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setDialogState(() {
+                        selectedDueDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 20, color: Colors.grey[600]),
+                        const SizedBox(width: 12),
+                        Text(
+                          selectedDueDate != null
+                              ? _formatDate(selectedDueDate!)
+                              : 'Select Due Date',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: selectedDueDate != null ? Colors.grey[800] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isNotEmpty) {
+                  setState(() {
+                    tasks.add(Task(
+                      id: DateTime.now().toString(),
+                      title: titleController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      dueDate: selectedDueDate,
+                    ));
+                  });
+                  _updateProgressAnimation();
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                setState(() {
-                  tasks.add(Task(
-                    id: DateTime.now().toString(),
-                    title: controller.text.trim(),
-                  ));
-                });
-                _updateProgressAnimation();
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   // ============== UI BUILD ==============
@@ -629,24 +804,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: () => _toggleTask(task.id),
-              child: _buildCheckbox(task.isCompleted),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: GestureDetector(
+                onTap: () => _toggleTask(task.id),
+                child: _buildCheckbox(task.isCompleted),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: GestureDetector(
-                onTap: () => _toggleTask(task.id),
-                child: Text(
-                  task.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: task.isCompleted ? Colors.grey[400] : Colors.grey[800],
-                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: task.isCompleted ? Colors.grey[400] : Colors.grey[800],
+                      decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                    ),
                   ),
-                ),
+                  if (task.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      task.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: task.isCompleted ? Colors.grey[350] : Colors.grey[600],
+                        decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 8),
@@ -660,6 +854,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  bool _isOverdue(DateTime dueDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    return dueDateOnly.isBefore(today);
   }
 
   Widget _buildCheckbox(bool isCompleted) {

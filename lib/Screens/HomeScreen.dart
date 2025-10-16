@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ============== STATE VARIABLES ==============
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
+  DateTime selectedDate = DateTime.now();
 
   List<Task> tasks = [
     Task(id: '1', title: 'Complete project documentation'),
@@ -93,6 +94,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ============== TASK METHODS ==============
+  void _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue[600]!,
+              onPrimary: Colors.white,
+              onSurface: Colors.grey[800]!,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
   void _toggleTask(String taskId) {
     setState(() {
       final task = tasks.firstWhere((t) => t.id == taskId);
@@ -225,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-
     );
   }
 
@@ -235,7 +262,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       children: [
         _buildAvatar(),
         const SizedBox(width: spacingMedium),
-        _buildGreeting(),
+        Expanded(child: _buildGreeting()),
+        _buildCalendarButton(),
       ],
     );
   }
@@ -277,6 +305,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildGreeting() {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    final dayName = days[selectedDate.weekday - 1];
+    final monthName = months[selectedDate.month - 1];
+    final dayNumber = selectedDate.day;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -289,13 +324,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: spacingSmall),
         Text(
-          'Sunday, Oct 12',
+          '$dayName, $monthName $dayNumber',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Colors.grey[500],
             fontSize: 14,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCalendarButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.blue[100]!,
+          width: 1.5,
+        ),
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.calendar_today,
+          color: Colors.blue[600],
+          size: 20,
+        ),
+        onPressed: _selectDate,
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(),
+        tooltip: 'Select Date',
+      ),
     );
   }
 

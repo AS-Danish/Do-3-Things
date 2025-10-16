@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/CustomBottomNav.dart';
-import 'AddScreen.dart';
 import 'HomeScreen.dart';
 import 'ProfileScreen.dart';
 class MainScreen extends StatefulWidget {
@@ -22,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _screens = [
       const HomeScreen(),      // Index 0
-      const AddScreen(),       // Index 1
+      Scaffold(),       // Index 1
       const ProfileScreen(),   // Index 2
     ];
   }

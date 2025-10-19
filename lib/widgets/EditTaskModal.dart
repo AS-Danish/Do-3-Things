@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/Task.dart';
+import '../models/task.dart';
 
 class EditTaskModal extends StatefulWidget {
   final Task task;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import '../models/Task.dart';
+import '../models/task.dart';
 import '../widgets/EditTaskModal.dart';
 import '../widgets/TaskOptionsPopUp.dart';
 import '../widgets/TasksLists.dart';

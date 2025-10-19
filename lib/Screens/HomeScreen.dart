@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../models/task.dart';
+import '../services/TaskService.dart';
 import '../widgets/EditTaskModal.dart';
 import '../widgets/TaskOptionsPopUp.dart';
 import '../widgets/TasksLists.dart';
 
 /// Main Home Screen Widget
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String userId;
+
+  const HomeScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -27,9 +33,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ============== STATE VARIABLES ==============
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
+  late TaskService _taskService;
   DateTime selectedDate = DateTime.now();
 
   List<Task> tasks = [];
+  bool isLoading = true;
 
   int get completedTasks => tasks.where((task) => task.isCompleted).length;
   int get totalTasks => tasks.length;
@@ -38,31 +46,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _initializeSampleTasks();
+    _taskService = TaskService(widget.userId);
     _initializeAnimation();
+    _loadTasksFromHive();
   }
 
-  void _initializeSampleTasks() {
-    tasks = [
-      Task(
-        id: '1',
-        title: 'Complete project documentation',
-        description: 'Write comprehensive documentation for the new feature',
-        dueDate: DateTime.now().add(const Duration(days: 2)),
-      ),
-      Task(
-        id: '2',
-        title: 'Review pull requests',
-        description: 'Review and approve pending PRs from team members',
-        dueDate: DateTime.now().add(const Duration(days: 1)),
-      ),
-      Task(
-        id: '3',
-        title: 'Update design mockups',
-        description: 'Finalize UI designs based on client feedback',
-        dueDate: DateTime.now().add(const Duration(days: 3)),
-      ),
-    ];
+  void _loadTasksFromHive() {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final loadedTasks = _taskService.loadLocalTasks();
+      setState(() {
+        tasks = loadedTasks;
+        isLoading = false;
+      });
+      _updateProgressAnimation();
+
+      // Animate to current progress after loading
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _progressController.forward();
+        }
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading tasks: $e')),
+        );
+      }
+    }
   }
 
   void _initializeAnimation() {
@@ -72,12 +90,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     _updateProgressAnimation();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _progressController.forward();
-      }
-    });
   }
 
   @override
@@ -103,6 +115,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ============== TASK METHODS ==============
+  Future<void> _saveTasksToHive() async {
+    try {
+      await _taskService.saveTasksToHive(tasks);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving tasks: $e')),
+        );
+      }
+    }
+  }
+
   void _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -137,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
     final newProgress = completedTasks / totalTasks;
     _animateToProgress(newProgress);
+    _saveTasksToHive();
   }
 
   void _deleteTask(String taskId) {
@@ -145,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
     final newProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
     _animateToProgress(newProgress);
+    _saveTasksToHive();
   }
 
   void _editTask(String taskId) {
@@ -165,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               task.description = updatedTask.description;
               task.dueDate = updatedTask.dueDate;
             });
+            _saveTasksToHive();
           },
         );
       },
@@ -302,15 +329,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ElevatedButton(
               onPressed: () {
                 if (titleController.text.trim().isNotEmpty) {
+                  final newTask = Task(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    title: titleController.text.trim(),
+                    description: descriptionController.text.trim(),
+                    dueDate: selectedDueDate,
+                  );
+
                   setState(() {
-                    tasks.add(Task(
-                      id: DateTime.now().toString(),
-                      title: titleController.text.trim(),
-                      description: descriptionController.text.trim(),
-                      dueDate: selectedDueDate,
-                    ));
+                    tasks.add(newTask);
                   });
                   _updateProgressAnimation();
+                  _saveTasksToHive();
                   Navigator.pop(context);
                 }
               },
@@ -332,7 +362,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: SafeArea(
+      body: isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          color: Colors.blue[600],
+        ),
+      )
+          : SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(paddingHorizontal),
@@ -347,6 +383,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
+      floatingActionButton: isLoading
+          ? null
+          : FloatingActionButton(
+        onPressed: _addNewTask,
+        backgroundColor: Colors.blue[600],
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

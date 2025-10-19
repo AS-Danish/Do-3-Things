@@ -14,13 +14,16 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
+  // Default userId until login system is implemented
+  static const String defaultUserId = 'default_user';
+
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _screens = [
-      const HomeScreen(),      // Index 0
+      const HomeScreen(userId: defaultUserId),      // Index 0
       const ProfileScreen(),   // Index 1
     ];
   }

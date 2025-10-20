@@ -17,10 +17,10 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ============== CONSTANTS ==============
   static const double paddingHorizontal = 16.0;
   static const double avatarSize = 56.0;
@@ -48,6 +48,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _taskService = TaskService(widget.userId);
     _initializeAnimation();
+    _loadTasksFromHive();
+  }
+
+  void refreshTasks() {
     _loadTasksFromHive();
   }
 

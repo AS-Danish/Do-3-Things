@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/AddTaskModal.dart';
 import '../widgets/CustomBottomNav.dart';
+import '../services/TaskService.dart';
 import 'HomeScreen.dart';
 import 'ProfileScreen.dart';
 
@@ -17,14 +18,20 @@ class _MainScreenState extends State<MainScreen> {
   // Default userId until login system is implemented
   static const String defaultUserId = 'default_user';
 
+  late final TaskService _taskService;
   late final List<Widget> _screens;
+  final GlobalKey<HomeScreenState> _homeScreenKey = GlobalKey<HomeScreenState>();
 
   @override
   void initState() {
     super.initState();
+    _taskService = TaskService(defaultUserId);
     _screens = [
-      const HomeScreen(userId: defaultUserId),      // Index 0
-      const ProfileScreen(),   // Index 1
+      HomeScreen(
+        key: _homeScreenKey,
+        userId: defaultUserId,
+      ), // Index 0
+      const ProfileScreen(), // Index 1
     ];
   }
 
@@ -55,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
       barrierColor: Colors.black.withOpacity(0.5),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return const AddTaskModal();
+        return AddTaskModal(taskService: _taskService);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
@@ -78,7 +85,12 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       },
-    );
+    ).then((newTask) {
+      // Refresh the HomeScreen when a task is added
+      if (newTask != null && _homeScreenKey.currentState != null) {
+        _homeScreenKey.currentState!.refreshTasks();
+      }
+    });
   }
 
   @override

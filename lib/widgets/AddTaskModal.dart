@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import '../models/task.dart';
+import '../services/TaskService.dart';
 
 class AddTaskModal extends StatefulWidget {
-  const AddTaskModal({super.key});
+  final TaskService taskService;
+
+  const AddTaskModal({super.key, required this.taskService});
 
   @override
   State<AddTaskModal> createState() => _AddTaskModalState();
@@ -64,7 +68,7 @@ class _AddTaskModalState extends State<AddTaskModal>
     }
   }
 
-  void _saveTask() {
+  Future<void> _saveTask() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,7 +81,21 @@ class _AddTaskModalState extends State<AddTaskModal>
       return;
     }
 
-    Navigator.pop(context);
+    // Create new task
+    final newTask = Task(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      dueDate: _selectedDate,
+      isCompleted: false,
+    );
+
+    // Save to Hive
+    await widget.taskService.tasksBox.put(newTask.id, newTask);
+
+    if (!mounted) return;
+
+    Navigator.pop(context, newTask); // Return the new task
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

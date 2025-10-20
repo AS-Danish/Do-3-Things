@@ -4,8 +4,38 @@ import '../services/TaskService.dart';
 
 class AddTaskModal extends StatefulWidget {
   final TaskService taskService;
+  final DateTime? initialDate;
 
-  const AddTaskModal({super.key, required this.taskService});
+  const AddTaskModal({
+    super.key,
+    required this.taskService,
+    this.initialDate,
+  });
+
+  // Static method to check if a specific date has any incomplete tasks when limit was reached
+  static bool hasDateThreeIncompleteTasks(TaskService taskService, DateTime date) {
+    final allTasks = taskService.tasksBox.values.toList();
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    // Get all tasks for today (both completed and incomplete)
+    final todayTasks = allTasks.where((task) {
+      final taskDate = DateTime(
+        task.dueDate!.year,
+        task.dueDate!.month,
+        task.dueDate!.day,
+      );
+      return taskDate == dateOnly;
+    }).toList();
+
+    // If there are 3 or more tasks total for today
+    if (todayTasks.length >= 3) {
+      // Check if any are incomplete
+      final hasIncomplete = todayTasks.any((task) => !task.isCompleted);
+      return hasIncomplete; // Block if any task is incomplete
+    }
+
+    return false; // Allow if less than 3 tasks total
+  }
 
   @override
   State<AddTaskModal> createState() => _AddTaskModalState();
@@ -15,13 +45,15 @@ class _AddTaskModalState extends State<AddTaskModal>
     with SingleTickerProviderStateMixin {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   late AnimationController _contentAnimationController;
   late Animation<double> _contentAnimation;
 
   @override
   void initState() {
     super.initState();
+    // Use initialDate if provided, otherwise use today
+    _selectedDate = widget.initialDate ?? DateTime.now();
     _contentAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -39,6 +71,35 @@ class _AddTaskModalState extends State<AddTaskModal>
     _descriptionController.dispose();
     _contentAnimationController.dispose();
     super.dispose();
+  }
+
+  // Check if the selected date has 3 tasks and any are incomplete
+  bool _hasThreeIncompleteTasks() {
+    final allTasks = widget.taskService.tasksBox.values.toList();
+
+    final selectedDateOnly = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+
+    // Get all tasks for the selected date
+    final dateTasks = allTasks.where((task) {
+      final taskDate = DateTime(
+        task.dueDate!.year,
+        task.dueDate!.month,
+        task.dueDate!.day,
+      );
+      return taskDate == selectedDateOnly;
+    }).toList();
+
+    // If there are 3 or more tasks for this date
+    if (dateTasks.length >= 3) {
+      // Check if any are incomplete
+      return dateTasks.any((task) => !task.isCompleted);
+    }
+
+    return false;
   }
 
   Future<void> _selectDate() async {
@@ -81,6 +142,31 @@ class _AddTaskModalState extends State<AddTaskModal>
       return;
     }
 
+    // Check if there are already 3 tasks with any incomplete for the SELECTED date
+    if (_hasThreeIncompleteTasks()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Complete all ${_selectedDate.day}/${_selectedDate.month} tasks to add more',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     // Create new task
     final newTask = Task(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -115,6 +201,8 @@ class _AddTaskModalState extends State<AddTaskModal>
 
   @override
   Widget build(BuildContext context) {
+    final hasLimit = _hasThreeIncompleteTasks();
+
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -205,6 +293,38 @@ class _AddTaskModalState extends State<AddTaskModal>
                     ],
                   ),
                   const SizedBox(height: 28),
+
+                  // Warning banner if limit reached
+                  if (hasLimit)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_rounded,
+                            color: Colors.orange.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'This date has 3 incomplete tasks. Complete them first!',
+                              style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Task Title
                   Column(

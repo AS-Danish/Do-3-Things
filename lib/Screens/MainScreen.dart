@@ -55,6 +55,35 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showAddTaskModal() {
+    // Get the selected date from HomeScreen
+    final DateTime selectedDate = _homeScreenKey.currentState?.selectedDate ?? DateTime.now();
+
+    // Check if the selected date has 3 tasks with any incomplete
+    if (AddTaskModal.hasDateThreeIncompleteTasks(_taskService, selectedDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Complete all ${selectedDate.day}/${selectedDate.month} tasks to add more',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return; // Don't show the modal
+    }
+
+    // If less than 3 tasks or all completed, show the modal with selected date
     showGeneralDialog(
       context: context,
       barrierDismissible: true,

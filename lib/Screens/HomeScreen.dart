@@ -62,8 +62,14 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     try {
       final loadedTasks = _taskService.loadLocalTasks();
+      // Filter tasks by selected date
+      final filteredTasks = loadedTasks.where((task) {
+        if (task.dueDate == null) return false;
+        return _isSameDate(task.dueDate!, selectedDate);
+      }).toList();
+
       setState(() {
-        tasks = loadedTasks;
+        tasks = filteredTasks;
         isLoading = false;
       });
       _updateProgressAnimation();
@@ -155,6 +161,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         selectedDate = picked;
       });
+      // Reload tasks for the new date
+      _loadTasksFromHive();
     }
   }
 
@@ -243,6 +251,12 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _formatDate(DateTime date) {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  bool _isSameDate(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 
   // ============== UI BUILD ==============

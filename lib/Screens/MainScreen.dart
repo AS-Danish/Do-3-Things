@@ -91,7 +91,10 @@ class _MainScreenState extends State<MainScreen> {
       barrierColor: Colors.black.withOpacity(0.5),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return AddTaskModal(taskService: _taskService);
+        return AddTaskModal(
+          taskService: _taskService,
+          initialDate: selectedDate, // Pass the selected date here
+        );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(

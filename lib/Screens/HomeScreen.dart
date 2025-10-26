@@ -125,9 +125,9 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ============== TASK METHODS ==============
-  Future<void> _saveTasksToHive() async {
+  Future<void> _saveTasksToHive(List<Task> allTasks) async {
     try {
-      await _taskService.saveTasksToHive(tasks);
+      await _taskService.saveTasksToHive(allTasks);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,22 +167,43 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _toggleTask(String taskId) {
+    // Load all tasks from Hive
+    final allTasks = _taskService.loadLocalTasks();
+
+    // Find and toggle the task in all tasks
+    final taskInAll = allTasks.firstWhere((t) => t.id == taskId);
+    taskInAll.isCompleted = !taskInAll.isCompleted;
+
+    // Save all tasks back to Hive
+    _saveTasksToHive(allTasks);
+
+    // Update the local filtered task
     setState(() {
       final task = tasks.firstWhere((t) => t.id == taskId);
       task.isCompleted = !task.isCompleted;
     });
+
     final newProgress = completedTasks / totalTasks;
     _animateToProgress(newProgress);
-    _saveTasksToHive();
   }
 
   void _deleteTask(String taskId) {
+    // Load all tasks from Hive
+    final allTasks = _taskService.loadLocalTasks();
+
+    // Remove the task from all tasks
+    allTasks.removeWhere((task) => task.id == taskId);
+
+    // Save all tasks back to Hive
+    _saveTasksToHive(allTasks);
+
+    // Update the local filtered tasks list
     setState(() {
       tasks.removeWhere((task) => task.id == taskId);
     });
+
     final newProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
     _animateToProgress(newProgress);
-    _saveTasksToHive();
   }
 
   void _editTask(String taskId) {
@@ -198,12 +219,30 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return EditTaskModal(
           task: task,
           onSave: (updatedTask) {
+            // Load all tasks from Hive
+            final allTasks = _taskService.loadLocalTasks();
+
+            // Find and update the task in all tasks
+            final taskInAll = allTasks.firstWhere((t) => t.id == taskId);
+            taskInAll.title = updatedTask.title;
+            taskInAll.description = updatedTask.description;
+            taskInAll.dueDate = updatedTask.dueDate;
+
+            // Save all tasks back to Hive
+            _saveTasksToHive(allTasks);
+
+            // Update the local filtered task
             setState(() {
               task.title = updatedTask.title;
               task.description = updatedTask.description;
               task.dueDate = updatedTask.dueDate;
             });
-            _saveTasksToHive();
+
+            // If the date changed, reload tasks for current date
+            if (updatedTask.dueDate != null &&
+                !_isSameDate(updatedTask.dueDate!, selectedDate)) {
+              _loadTasksFromHive();
+            }
           },
         );
       },

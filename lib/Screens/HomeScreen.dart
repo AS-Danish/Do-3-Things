@@ -166,25 +166,39 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _toggleTask(String taskId) {
-    // Load all tasks from Hive
-    final allTasks = _taskService.loadLocalTasks();
+  void _toggleTask(String taskId) async {
+    try {
+      // Load all tasks from Hive
+      final allTasks = _taskService.loadLocalTasks();
 
-    // Find and toggle the task in all tasks
-    final taskInAll = allTasks.firstWhere((t) => t.id == taskId);
-    taskInAll.isCompleted = !taskInAll.isCompleted;
+      // Find the task in all tasks
+      final taskIndex = allTasks.indexWhere((t) => t.id == taskId);
+      if (taskIndex == -1) return;
 
-    // Save all tasks back to Hive
-    _saveTasksToHive(allTasks);
+      // Toggle the task
+      allTasks[taskIndex].isCompleted = !allTasks[taskIndex].isCompleted;
 
-    // Update the local filtered task
-    setState(() {
-      final task = tasks.firstWhere((t) => t.id == taskId);
-      task.isCompleted = !task.isCompleted;
-    });
+      // Save to Hive immediately
+      await _taskService.saveTask(allTasks[taskIndex]);
 
-    final newProgress = completedTasks / totalTasks;
-    _animateToProgress(newProgress);
+      // Update local state
+      setState(() {
+        final localTaskIndex = tasks.indexWhere((t) => t.id == taskId);
+        if (localTaskIndex != -1) {
+          tasks[localTaskIndex].isCompleted = allTasks[taskIndex].isCompleted;
+        }
+      });
+
+      // Animate progress
+      final newProgress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
+      _animateToProgress(newProgress);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating task: $e')),
+        );
+      }
+    }
   }
 
   void _deleteTask(String taskId) {
